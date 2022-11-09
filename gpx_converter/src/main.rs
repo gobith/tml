@@ -1,7 +1,10 @@
-use quick_xml::events::Event;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 use quick_xml::reader::Reader;
-use std::fs;
+use quick_xml::writer::Writer;
 use std::f64::consts::PI;
+use std::fs;
+use std::fs::File;
+use std::io::Cursor;
 
 #[derive(Debug)]
 struct TrackPoint {
@@ -18,11 +21,6 @@ struct WayPoint {
 
 const EARTH_RADIUS_IN_METERS: f64 = 6371000.0;
 
-
-
-
-
-
 fn main() {
     let contents = fs::read_to_string("../website/public/TML-211-km-AU-certifieerde-2021-2025.gpx")
         .expect("Something went wrong reading the file");
@@ -30,7 +28,6 @@ fn main() {
     let mut reader = Reader::from_str(&contents);
     reader.trim_text(true);
 
- 
     let mut buf = Vec::new();
 
     let mut track_points = vec![];
@@ -92,21 +89,18 @@ fn main() {
                 lon: end_waypoint.lon,
                 name: format!("{} km", meters / 1000.0),
             });
-            println!("{} meters", meters);
-            println!("{} km", meters / 1000.0);
+            // println!("{} meters", meters);
+            // println!("{} km", meters / 1000.0);
             meters += 1000.0;
-
         };
-    };
-    println!("total distance: {}", total_distance);
-    println!("waypoints: {:?}", way_points);
+    }
+    // println!("total distance: {}", total_distance);
+    // println!("waypoints: {:?}", way_points);
 
-
+    write(&track_points, &way_points);
 }
 
-
-
-fn calculate_distance(start_waypoint: &TrackPoint , end_waypoint: &TrackPoint) -> f64 {
+fn calculate_distance(start_waypoint: &TrackPoint, end_waypoint: &TrackPoint) -> f64 {
     let lat1 = start_waypoint.lat * PI / 180.0;
     let lon1 = start_waypoint.lon * PI / 180.0;
     let lat2 = end_waypoint.lat * PI / 180.0;
@@ -115,8 +109,66 @@ fn calculate_distance(start_waypoint: &TrackPoint , end_waypoint: &TrackPoint) -
     let dlon = lon2 - lon1;
     let dlat = lat2 - lat1;
 
-    let a = (dlat / 2.0).sin() * (dlat / 2.0).sin() + lat1.cos() * lat2.cos() * (dlon / 2.0).sin() * (dlon / 2.0).sin();
+    let a = (dlat / 2.0).sin() * (dlat / 2.0).sin()
+        + lat1.cos() * lat2.cos() * (dlon / 2.0).sin() * (dlon / 2.0).sin();
     let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
 
-    EARTH_RADIUS_IN_METERS  * c
+    EARTH_RADIUS_IN_METERS * c
+}
+
+fn write(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) {
+    let mut wtr = Writer::new(Cursor::new(Vec::new()));
+
+    wtr.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
+        .unwrap();
+
+    wtr.write_event(Event::Start(BytesStart::new("gpx").with_attributes(
+        vec![("version", "1.1"), ("creator", "gpx_converter")].into_iter(),
+    )))
+    .unwrap();
+
+    for point in way_points {
+        let lat = format!("{}", point.lat);
+        let lon = format!("{}", point.lon);
+
+        wtr.write_event(Event::Start(BytesStart::new("wpt").with_attributes(
+            vec![("lat", &lat[..]), ("lon", &lon[..])].into_iter(),
+        )))
+        .unwrap();
+
+        wtr.write_event(Event::End(BytesEnd::new("wpt"))).unwrap();
+    }
+
+
+    wtr.write_event(Event::Start(BytesStart::new("trk")))
+        .unwrap();
+
+    wtr.write_event(Event::Start(BytesStart::new("trkseg")))
+        .unwrap();
+
+    for point in track_points {
+        let lat = format!("{}", point.lat);
+        let lon = format!("{}", point.lon);
+
+        wtr.write_event(Event::Start(BytesStart::new("trkpt").with_attributes(
+            vec![("lat", &lat[..]), ("lon", &lon[..])].into_iter(),
+        )))
+        .unwrap();
+
+        wtr.write_event(Event::End(BytesEnd::new("trkpt"))).unwrap();
+    }
+
+    wtr.write_event(Event::End(BytesEnd::new("trkseg")))
+        .unwrap();
+
+    wtr.write_event(Event::End(BytesEnd::new("trk"))).unwrap();
+
+    wtr.write_event(Event::End(BytesEnd::new("gpx"))).unwrap();
+
+    let mut cursor = wtr.into_inner();
+    let bytes = cursor.get_ref();
+    let s = std::str::from_utf8(bytes).unwrap();
+    // println!("{}", s);
+
+    fs::write("../website/public/test.gpx", s).expect("Unable to write file");
 }

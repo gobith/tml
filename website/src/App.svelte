@@ -20,6 +20,7 @@
       name: "21,1 km",
       path: "./TML-211-km-AU-certifieerde-2021-2025.gpx",
     },
+    { id: "test", name: "test", path: "./test.gpx" },
   ];
 
   let selection = list[3];
