@@ -5,3 +5,15 @@
 	font-family: 'Poppins', sans-serif;
 	/* outline: 1px solid green; */
 }
+
+.km-icon {
+    width: 20px;
+    height: 20px;
+    background-color: rgba(255,255,255,1);
+	border: 1px solid black;
+	color: black;
+	text-align: center;
+	font-weight: 900;
+	/* border-radius: 50%; */
+  }
+

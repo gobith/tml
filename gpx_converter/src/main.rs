@@ -88,7 +88,7 @@ fn main() {
             way_points.push(WayPoint {
                 lat: end_waypoint.lat,
                 lon: end_waypoint.lon,
-                name: format!("{} km", meters / 1000.0),
+                name: format!("{}", meters / 1000.0),
             });
             // println!("{} meters", meters);
             // println!("{} km", meters / 1000.0);
@@ -191,6 +191,6 @@ fn write_json(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) -> () 
         }).collect::<Vec<_>>()
     };
 
-    fs::write("../website/public/test.json", json::stringify(object))
+    fs::write("../website/public/21km.json", json::stringify(object))
         .expect("Unable to write file");
 }

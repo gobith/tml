@@ -10,12 +10,33 @@
   // };
 
   const list = [
-    { id: "5", name: "5 km", path: "./test.json", data: null },
-    { id: "10", name: "10 km", path: "./test.json", data: null },
+    { id: "5", name: "5 km", path: "./5km.json", data: null, layerGroup: null },
+    {
+      id: "10",
+      name: "10 km",
+      path: "./10km.json",
+      data: null,
+      layerGroup: null,
+    },
+    {
+      id: "16",
+      name: "16 km",
+      path: "./16km.json",
+      data: null,
+      layerGroup: null,
+    },
+    {
+      id: "21",
+      name: "21 km",
+      path: "./21km.json",
+      data: null,
+      layerGroup: null,
+    },
   ];
 
   let polyline;
   let selection = list[0];
+  let currentGroup = null;
 
   $: changeItem(selection);
 
@@ -24,17 +45,35 @@
       console.log("fetching data");
       let response = await fetch(item.path);
       item.data = await response.json();
+
+      item.layerGroup = L.layerGroup();
+
+      item.data.way_points.forEach((way_point) => {
+        let myIcon = L.divIcon({
+          html: `<div>${way_point.name}</div>`,
+          iconSize: null,
+          iconAnchor: [10, 10],
+          className: "km-icon",
+        });
+
+        L.marker([way_point.lat, way_point.lon], { icon: myIcon }).addTo(
+          item.layerGroup
+        );
+      });
+
+      item.polyline = L.polyline(item.data.track_points, {
+        color: "rgba(0,0,0,0.5)",
+      });
+      item.polyline.addTo(item.layerGroup);
     }
 
-    if (polyline) {
-      polyline.remove();
+    if (currentGroup) {
+      currentGroup.remove();
     }
 
-    polyline = L.polyline(item.data.track_points, {
-      color: "rgba(0,0,0,0.5)",
-    }).addTo(map);
-
-    map.fitBounds(polyline.getBounds());
+    item.layerGroup.addTo(map);
+    map.fitBounds(item.polyline.getBounds());
+    currentGroup = item.layerGroup;
   };
 
   const service = {
