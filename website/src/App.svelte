@@ -1,53 +1,41 @@
-<script>
-  import * as L from "leaflet-gpx";
+<script lang="ts">
+  import * as L from "leaflet";
   import "leaflet/dist/leaflet.css";
   import { onMount } from "svelte";
 
+  // type ListItem = {
+  //   id: string;
+  //   name: string;
+  //   path: string;
+  // };
+
   const list = [
-    { id: "5", name: "5 km", path: "./TML-5-km-AU-certifieerde-2021-2025.gpx" },
-    {
-      id: "10",
-      name: "10 km",
-      path: "./TML-10-km-AU-certifieerde-2021-2025.gpx",
-    },
-    {
-      id: "16",
-      name: "16,1 km",
-      path: "./TML-161-km-AU-certifieerde-2021-2025.gpx",
-    },
-    {
-      id: "21",
-      name: "21,1 km",
-      path: "./TML-211-km-AU-certifieerde-2021-2025.gpx",
-    },
-    { id: "test", name: "test", path: "./test.gpx" },
+    { id: "5", name: "5 km", path: "./test.json", data: null },
+    { id: "10", name: "10 km", path: "./test.json", data: null },
   ];
 
-  let selection = list[3];
+  let polyline;
+  let selection = list[0];
 
-  let gpx;
+  $: changeItem(selection);
 
-  const changeGpx = (sel) => {
-    if (!map) return;
-    if (gpx) {
-      gpx.remove();
+  const changeItem = async (item) => {
+    if (!item.data) {
+      console.log("fetching data");
+      let response = await fetch(item.path);
+      item.data = await response.json();
     }
-    gpx = new L.GPX(selection.path, { async: true }).on("loaded", function (e) {
-      map.fitBounds(e.target.getBounds());
-    });
 
-    gpx.addTo(map);
+    if (polyline) {
+      polyline.remove();
+    }
+
+    polyline = L.polyline(item.data.track_points, {
+      color: "rgba(0,0,0,0.5)",
+    }).addTo(map);
+
+    map.fitBounds(polyline.getBounds());
   };
-
-  $: changeGpx(selection);
-
-  const tileUrl = () => {
-    return `https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/pastel/EPSG:3857/{z}/{x}/{y}.png`;
-  };
-
-  const tileLayer = L.tileLayer(tileUrl(), {
-    maxZoom: 20,
-  });
 
   const service = {
     data: { lat: 52.15517, lng: 5.3872, zoom: 8 },
@@ -68,16 +56,9 @@
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
-
-    changeGpx(selection);
   };
 
   onMount(setup);
-
-  const select = (item) => {
-    selection = item;
-    console.log(item);
-  };
 </script>
 
 <div class="container">
@@ -88,7 +69,7 @@
         <li
           class:active={selection.id === item.id}
           on:click={() => {
-            select(item);
+            selection = item;
           }}
         >
           {item.name}
