@@ -3,8 +3,9 @@ use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
 use std::f64::consts::PI;
 use std::fs;
-use std::fs::File;
 use std::io::Cursor;
+#[macro_use]
+extern crate json;
 
 #[derive(Debug)]
 struct TrackPoint {
@@ -97,7 +98,8 @@ fn main() {
     // println!("total distance: {}", total_distance);
     // println!("waypoints: {:?}", way_points);
 
-    write(&track_points, &way_points);
+    write_gpx(&track_points, &way_points);
+    write_json(&track_points, &way_points);
 }
 
 fn calculate_distance(start_waypoint: &TrackPoint, end_waypoint: &TrackPoint) -> f64 {
@@ -116,7 +118,7 @@ fn calculate_distance(start_waypoint: &TrackPoint, end_waypoint: &TrackPoint) ->
     EARTH_RADIUS_IN_METERS * c
 }
 
-fn write(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) {
+fn write_gpx(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) -> () {
     let mut wtr = Writer::new(Cursor::new(Vec::new()));
 
     wtr.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
@@ -138,7 +140,6 @@ fn write(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) {
 
         wtr.write_event(Event::End(BytesEnd::new("wpt"))).unwrap();
     }
-
 
     wtr.write_event(Event::Start(BytesStart::new("trk")))
         .unwrap();
@@ -165,10 +166,31 @@ fn write(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) {
 
     wtr.write_event(Event::End(BytesEnd::new("gpx"))).unwrap();
 
-    let mut cursor = wtr.into_inner();
+    let cursor = wtr.into_inner();
     let bytes = cursor.get_ref();
     let s = std::str::from_utf8(bytes).unwrap();
     // println!("{}", s);
 
     fs::write("../website/public/test.gpx", s).expect("Unable to write file");
+}
+
+fn write_json(track_points: &Vec<TrackPoint>, way_points: &Vec<WayPoint>) -> () {
+    let test = track_points
+        .iter()
+        .map(|point| vec![point.lat, point.lon])
+        .collect::<Vec<_>>();
+
+    let object = object! {
+       track_points: test,
+        way_points: way_points.iter().map(|point| {
+            object!{
+                lat: point.lat,
+                lon: point.lon,
+                name: *point.name
+            }
+        }).collect::<Vec<_>>()
+    };
+
+    fs::write("../website/public/test.json", json::stringify(object))
+        .expect("Unable to write file");
 }
